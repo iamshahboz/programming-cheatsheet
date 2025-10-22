@@ -184,6 +184,41 @@ a good place to keep aliases will be .bashrc
 nano .bashrc
 and we write the alias there
 
+27. switch user
+
+```bash
+su <username>
+```
+
+28. change someone's password
+
+```bash
+passwd
+```
+
+29. Change ownership (every file and directory has its owner)
+
+sudo chown username file/folder
+
+30. Understanding permissions
+
+Files types
+
+-rw-rw-r--
+drwxr-xr-x
+
+- regular file 
+d - directory
+c  - character special file
+l - symbolic link
+
+
+owner    group   world
+rw-      rw-     r--
+
+r - read
+w - write
+- execute
 
 
 
