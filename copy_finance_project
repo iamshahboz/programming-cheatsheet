@@ -1,0 +1,111 @@
+cd /var/www/
+sudo cp -r myapp myapp_customer2
+cd myapp_customer2
+
+2. 
+cp .env .env_customer2
+
+3. 
+sudo -u postgres psql
+
+4. 
+CREATE DATABASE myapp_customer2;
+CREATE USER myapp_customer2_user WITH PASSWORD 'strongpassword';
+GRANT ALL PRIVILEGES ON DATABASE myapp_customer2 TO myapp_customer2_user;
+\q
+
+5.
+DB_NAME=myapp_customer2
+DB_USER=myapp_customer2_user
+DB_PASSWORD=strongpassword
+DB_HOST=localhost
+
+6.
+source venv/bin/activate
+python manage.py migrate
+python manage.py collectstatic
+
+7.
+sudo nano /etc/systemd/system/myapp_customer2.service
+
+8.
+[Unit]
+Description=Gunicorn instance for MyApp Customer 2
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/myapp_customer2
+EnvironmentFile=/var/www/myapp_customer2/.env_customer2
+ExecStart=/var/www/myapp_customer2/venv/bin/gunicorn --access-logfile - --workers 3 --bind unix:/run/myapp_customer2.sock myproject.wsgi:application
+
+[Install]
+WantedBy=multi-user.target
+
+
+9.
+sudo systemctl daemon-reload
+sudo systemctl enable myapp_customer2
+sudo systemctl start myapp_customer2
+
+
+10.
+sudo systemctl status myapp_customer2
+
+11.
+sudo nano /etc/nginx/sites-available/myapp_customer2
+
+12.
+server {
+    listen 80;
+    server_name customer2.yourdomain.com;
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location /static/ {
+        root /var/www/myapp_customer2;
+    }
+
+    location / {
+        include proxy_params;
+        proxy_pass http://unix:/run/myapp_customer2.sock;
+    }
+}
+
+13.
+sudo ln -s /etc/nginx/sites-available/myapp_customer2 /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+
+14.
+sudo certbot --nginx -d customer2.yourdomain.com
+
+front
+1.
+cd /var/www/
+cp -r myapp_frontend myapp_frontend_customer2
+cd myapp_frontend_customer2
+
+2. 
+REACT_APP_API_URL=https://customer2.yourdomain.com/api/
+
+3. 
+npm run build
+
+5.
+server {
+    listen 80;
+    server_name customer2.yourdomain.com;
+
+    root /var/www/myapp_frontend_customer2/build;
+    index index.html;
+
+    location / {
+        try_files $uri /index.html;
+    }
+
+    location /api/ {
+        proxy_pass http://unix:/run/myapp_customer2.sock;
+        include proxy_params;
+    }
+}
